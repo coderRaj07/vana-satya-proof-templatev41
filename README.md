@@ -9,7 +9,7 @@ This template provides a basic structure for building proof tasks that:
 1. Read input files from the `/input` directory.
 2. Process the data securely, running any necessary validations to prove the data authentic, unique, high quality, etc.
 3. Write proof results to the `/output/results.json` file in the following format:
-
+ 
 ```json
 {
   "dlp_id": 1234, // DLP ID is found in the Root Network contract after the DLP is registered
