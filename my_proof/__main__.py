@@ -5,21 +5,25 @@ import sys
 import traceback
 import zipfile
 from typing import Dict, Any
-
 from my_proof.proof import Proof
 
-INPUT_DIR, OUTPUT_DIR, SEALED_DIR = '/input', '/output', '/sealed'
+# Default to 'production' if NODE_ENV is not set
+environment = os.environ.get('NODE_ENV', 'production')
+
+# Set the input and output directories based on the environment
+INPUT_DIR = './demo/input' if environment == 'development' else '/input'
+OUTPUT_DIR = './demo/output' if environment == 'development' else '/output'
+SEALED_DIR = './demo/sealed' if environment == 'development' else '/sealed'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
-
 
 def load_config() -> Dict[str, Any]:
     """Load proof configuration from environment variables."""
     config = {
-        'dlp_id': 1234,  # Set your own DLP ID here
-        'use_sealing': os.path.isdir(SEALED_DIR),
+        'dlp_id': 24,  # DLP ID defaults to 24
         'input_dir': INPUT_DIR,
-        'user_email': os.environ.get('USER_EMAIL', None),
+        'validator_base_api_url': os.environ.get('VALIDATOR_BASE_API_URL', None),
+        'use_sealing': os.path.isdir(SEALED_DIR)
     }
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
@@ -38,8 +42,8 @@ def run() -> None:
     proof_response = proof.generate()
 
     output_path = os.path.join(OUTPUT_DIR, "results.json")
-    with open(output_path, 'w') as f:
-        json.dump(proof_response.dict(), f, indent=2)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(proof_response, f, indent=2)
     logging.info(f"Proof generation complete: {proof_response}")
 
 
