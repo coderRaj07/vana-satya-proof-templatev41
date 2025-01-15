@@ -27,7 +27,6 @@ class ProofResponse(BaseModel):
     authenticity: float = 0.0
     ownership: float = 0.0
     quality: float = 0.0
-    contribution: float = 0.0
     uniqueness: float = 0.0
     attributes: Optional[Dict[str, Any]] = {}
     metadata: Optional[Dict[str, Any]] = {}

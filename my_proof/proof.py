@@ -78,7 +78,6 @@ class Proof:
 
                 proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
                 proof_response_object['uniqueness'] = 1  # Placeholder for uniqueness
-                proof_response_object['contribution'] = contribution_score_result['normalized_dynamic_score']
                 proof_response_object['quality'] = 1
                 # Add other scores (e.g., ownership)
                 proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
