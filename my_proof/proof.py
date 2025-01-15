@@ -62,7 +62,8 @@ class Proof:
         logging.info("Starting proof generation")
 
         proof_response_object = {
-            'dlpId': self.config.get('dlp_id', '24')
+            'dlp_id': self.config.get('dlp_id', '24'),
+            'valid': True,
         }
 
         for input_filename in os.listdir(self.config['input_dir']):
