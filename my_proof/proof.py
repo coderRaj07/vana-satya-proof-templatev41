@@ -89,7 +89,6 @@ class Proof:
                 proof_response_object['attributes'] = {
                     'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
                     'totalContributionScore': contribution_score_result['total_dynamic_score'],
-                    'jwtToken': self.config.get('jwt_secret_key'),
                 }
 
         logging.info(f"Proof response: {proof_response_object}")
