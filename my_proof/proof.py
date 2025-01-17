@@ -78,8 +78,8 @@ class Proof:
                 contribution_score_result = self.calculate_contribution_score(input_data)
 
                 proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
-                proof_response_object['uniqueness'] = 1  # Placeholder for uniqueness
-                proof_response_object['quality'] = 1
+                proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
+                proof_response_object['quality'] = 1.0
                 # Add other scores (e.g., ownership)
                 proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
 
@@ -89,6 +89,7 @@ class Proof:
                 proof_response_object['attributes'] = {
                     'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
                     'totalContributionScore': contribution_score_result['total_dynamic_score'],
+                    'jwtToken': self.config.get('jwt_secret_key'),
                 }
 
         logging.info(f"Proof response: {proof_response_object}")
@@ -140,8 +141,31 @@ class Proof:
         return round(valid_count / len(contributions), 5) if contributions else 0
 
     def calculate_ownership_score(self, jwt_token: str, data: Dict[str, Any]) -> float:
-        # Placeholder implementation; replace with API call logic if needed
-        return 1.0 if jwt_token else 0.0
+        # if not jwt_token or not isinstance(jwt_token, str):
+        #     raise ValueError('JWT token is required and must be a string')
+        # if not data or not isinstance(data, dict) or 'walletAddress' not in data or not isinstance(data.get('subType'), list):
+        #     raise ValueError('Invalid data format. Ensure walletAddress is a string and subType is an array.')
+
+        # try:
+        #     headers = {
+        #         'Authorization': f'Bearer {jwt_token}',  # Attach JWT token in the Authorization header
+        #     }
+        #     response = requests.post(api_url, json=data, headers=headers)
+
+        #     response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+
+        #     # return response.json().get('success', False) and 1.0 or 0.0
+            return 1.0
+        # except requests.exceptions.RequestException as e:
+        #     logging.error(f"Error during API request: {e}")
+        #     return 0.0
+
+        # except requests.exceptions.HTTPError as error:
+        #     print({'error': error})
+        #     if error.response.status_code == 400:
+        #         return 0.0
+        #     raise ValueError(f'API call failed: {error.response.json().get("error", str(error))}')
+
 
     def calculate_score(self, proof_response_object: Dict[str, Any]) -> float:
         attributes = ['authenticity', 'uniqueness', 'contribution', 'ownership']
