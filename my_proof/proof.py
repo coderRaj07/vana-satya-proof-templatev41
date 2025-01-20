@@ -4,6 +4,8 @@ import os
 from typing import Dict, Any
 import requests
 from jwt import encode as jwt_encode
+import pandas as pd
+from datetime import timedelta
 
 from my_proof.models.proof_response import ProofResponse
 
@@ -47,6 +49,47 @@ CONTRIBUTION_SUBTYPE_WEIGHTS = {
     "AMAZON_ORDER_HISTORY": 1.1,
     "TWITTER_USERINFO": 1.0,
     "FARCASTER_USERINFO": 1.1,
+
+    YOUTUBE_SUBSCRIBERS
+    YOUTUBE_CHANNEL_DATA
+    YOUTUBE_CREATOR_PLAYLIST
+    YOUTUBE_STUDIO
+
+    AMAZON_PRIME_VIDEO # anticipated
+    AMAZON_ORDER_HISTORY # have
+
+    SPOTIFY_PLAYLIST
+    SPOTIFY_HISTORY
+
+    NETFLIX_HISTORY      # have
+    NETFLIX_FAVORITE
+
+    TWITTER_USERINFO    # have
+
+    FARCASTER_USERINFO  # have
+
+    COINMARKETCAP_USER_WATCHLIST # have
+
+    LINKEDIN_USER_INFO   # have
+    TRIP_USER_DETAILS    # have
+}
+
+points = {
+    'YOUTUBE_SUBSCRIBERS': 50,
+    'YOUTUBE_CHANNEL_DATA': 50,
+    'YOUTUBE_CREATOR_PLAYLIST': 50,
+    'YOUTUBE_STUDIO': 50,
+    'AMAZON_PRIME_VIDEO': 50,
+    'AMAZON_ORDER_HISTORY': 50,
+    'SPOTIFY_PLAYLIST': 50,
+    'SPOTIFY_HISTORY': 50,
+    'NETFLIX_HISTORY': 50,
+    'NETFLIX_FAVORITE': 50,
+    'TWITTER_USERINFO': 50,
+    'FARCASTER_USERINFO': 50,
+    'COINMARKETCAP_USER_WATCHLIST': 50,
+    'LINKEDIN_USER_INFO': 50,
+    'TRIP_USER_DETAILS': 50
 }
 
 CONTRIBUTION_THRESHOLD = 4
@@ -166,7 +209,7 @@ class Proof:
         #     raise ValueError(f'API call failed: {error.response.json().get("error", str(error))}')
 
 
-    def calculate_score(self, proof_response_object: Dict[str, Any]) -> float:
+    def calculate_final_score(self, proof_response_object: Dict[str, Any]) -> float:
         attributes = ['authenticity', 'uniqueness', 'contribution', 'ownership']
 
         valid_attributes = [
@@ -178,3 +221,125 @@ class Proof:
             return 0
 
         return round(sum(valid_attributes) / len(valid_attributes), 5)
+
+
+    # Calculate Quality Scoring Functions
+    # Each function provides score that is out of 50
+
+    # Scoring thresholds
+    def get_watch_score(count):
+        if count >= 10:
+            return 50
+        elif 4 <= count <= 9:
+            return 25
+        elif 1 <= count <= 3:
+            return 5
+        else:
+            return 0
+
+    # Watch score calculation out of 50
+    # Function to calculate score based on 15-day intervals using Pandas
+    # 15 days interval is taken to prevent spamming of netflix history
+    def calculate_watch_score(watch_data):
+        # Convert the input data into a pandas DataFrame
+        df = pd.DataFrame(watch_data)
+
+        # Convert the 'date' column to datetime
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+
+        # Determine the start and end dates dynamically
+        start_date = df['Date'].min()
+        end_date = df['Date'].max()
+
+        # Create 15-day intervals
+        intervals = pd.date_range(start=start_date, end=end_date, freq='15D')
+
+        # Count the number of shows watched in each interval
+        interval_counts = []
+        for i in range(len(intervals) - 1):
+            interval_start = intervals[i]
+            interval_end = intervals[i + 1]
+            count = df[(df['Date'] >= interval_start) & (df['Date'] < interval_end)].shape[0]
+            interval_counts.append(count)
+
+        # Calculate the scores for each interval
+        interval_scores = [get_watch_score(count) for count in interval_counts]
+
+        # Calculate the overall score (average of interval scores)
+        overall_score = sum(interval_scores) / len(interval_scores) if interval_scores else 0
+
+        return overall_score, interval_scores
+
+
+
+    def get_amazon_order_history_score(orderCount):
+        # Assuming full score for 10 or more orders
+        if orderCount >= 10:
+            return 50
+        # Assuming half score for 5-9 orders
+        elif 5 <= orderCount <= 9:
+            return 25
+        # Assuming 10% score for 1-4 orders
+        elif 1 <= orderCount <= 4:
+            return 5
+        # Assuming 0 score for 0 orders
+        else:
+            return 0
+        
+
+    def get_farcaster_userinfo_score(data, points):
+        follower_count = int(data['securedSharedData']['followerCount'])
+        max_followers = 1000  # assuming max followers for full score
+        return min(follower_count / max_followers, 1) * points['FARCASTER_USERINFO']
+
+    def get_twitter_userinfo_score(data, points):
+        follower_count = int(data['securedSharedData']['followers'])
+        max_followers = 1000  # assuming max followers for full score
+        return min(follower_count / max_followers, 1) * points['TWITTER_USERINFO']
+
+
+    # Main function to calculate scores
+    def calculate_quality_scores(input_data):
+        # Define a dictionary to map task subtypes to their respective score calculation functions
+        scoring_functions = {
+            'AMAZON_ORDER_HISTORY': get_amazon_order_history_score,
+            'FARCASTER_USERINFO': get_farcaster_userinfo_score,
+            'TWITTER_USERINFO': get_twitter_userinfo_score,
+            'NETFLIX_HISTORY': calculate_watch_score,
+        }
+        
+        # Initialize a dictionary to store the final scores
+        final_scores = {}
+        
+        # Loop through each contribution in the input data
+        for contribution in input_data['contribution']:
+            task_subtype = contribution['taskSubType']
+            securedSharedData = contribution['securedSharedData']
+
+            if task_subtype === 'NETFLIX_HISTORY':
+                # just provide the required parameters securedSharedData['csv']
+                score, interval_scores = calculate_watch_score(securedSharedData['csv'])
+                final_scores[task_subtype] = score
+            
+            if task_subtype === 'AMAZON_ORDER_HISTORY':
+                # just provide the required parameters securedSharedData['orderCount']
+                if len(securedSharedData['orders'])  == 0:
+                    score = 0
+                else:
+                score = get_amazon_order_history_score(securedSharedData['orderCount'])
+                final_scores[task_subtype] = score
+            
+            # Check if the task subtype has a corresponding score function
+            if task_subtype in scoring_functions:
+                score = scoring_functions[task_subtype](contribution, points)
+                final_scores[task_subtype] = score
+            else:
+                # Handle the case where the subtype is not present (e.g., assign score of 0)
+                final_scores[task_subtype] = 0  # Or you can skip this entirely if needed
+        
+        # Optionally, you can check if there are any subtypes not in the input
+        missing_subtypes = set(scoring_functions.keys()) - set(final_scores.keys())
+        for missing in missing_subtypes:
+            final_scores[missing] = 0  # Set to 0 or some other default behavior
+        
+        return final_scores
