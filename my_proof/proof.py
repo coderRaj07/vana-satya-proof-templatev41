@@ -2,10 +2,11 @@ import json
 import logging
 import os
 from typing import Dict, Any
+import jwt
 import requests
 from jwt import encode as jwt_encode
 import pandas as pd
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from my_proof.models.proof_response import ProofResponse
 
@@ -105,7 +106,16 @@ class Proof:
     def generate_jwt_token(self):
         secret_key = self.config.get('jwt_secret_key', 'default_secret')
         expiration_time = self.config.get('jwt_expiration_time', 180)
-        return jwt_encode({}, secret_key, algorithm='HS256')
+        # Set the expiration time to 3 minutes from now
+        exp = datetime.now(timezone.utc) + timedelta(seconds=expiration_time)
+        
+        payload = {
+            'exp': exp
+        }
+        
+        # Encode the JWT
+        token = jwt.encode(payload, secret_key, algorithm='HS256')
+        return token
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
@@ -200,7 +210,7 @@ class Proof:
             interval_counts.append(count)
 
         # Calculate the scores for each interval
-        interval_scores = [get_watch_history_score(count, task_subtype) for count in interval_counts]
+        interval_scores = [self.get_watch_history_score(count, task_subtype) for count in interval_counts]
 
         # Calculate the overall score (average of interval scores)
         overall_score = sum
@@ -243,7 +253,7 @@ class Proof:
             # Can be used for AMAZON_PRIME_VIDEO
             if task_subtype == 'NETFLIX_HISTORY':
                 # Just provide the required parameters securedSharedData['csv']
-                score, interval_scores = calculate_watch_score(securedSharedData['csv'], task_subtype)
+                score, interval_scores = self.calculate_watch_score(securedSharedData['csv'], task_subtype)
                 final_scores[task_subtype] = score
 
             elif task_subtype in ['AMAZON_ORDER_HISTORY', 'TRIP_USER_DETAILS']:
