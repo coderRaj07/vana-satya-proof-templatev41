@@ -81,12 +81,13 @@ class Proof:
                 logging.info(f"Processing file: {input_filename}")
 
                 # jwt_token = self.generate_jwt_token() # TODO: Uncomment
+                # data = self.extract_wallet_address_and_subtypes(input_data) # TODO: Uncomment
                 # contribution_score_result = self.calculate_contribution_score(input_data)
                 
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
                 proof_response_object['quality'] = self.calculate_quality_score(input_data)
                 proof_response_object['ownership'] = 1.0
-                # proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data) # TODO: Uncomment
+                # proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, data) # TODO: Uncomment
                 proof_response_object['authenticity'] = self.calculate_authenticity_score(input_data)
 
                 if proof_response_object['authenticity'] < 1.0:
@@ -116,6 +117,11 @@ class Proof:
         # Encode the JWT
         token = jwt_encode(payload, secret_key, algorithm='HS256')
         return token
+
+    def extract_wallet_address_and_subtypes(self, input_data):
+        wallet_address = input_data.get('walletAddress')
+        subType = [contribution.get('taskSubType') for contribution in input_data.get('contribution', [])]
+        return {wallet_address, subType}
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
