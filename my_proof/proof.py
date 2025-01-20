@@ -122,12 +122,12 @@ class Proof:
 
                 proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
-                proof_response_object['quality'] = 1.0
+                proof_response_object['quality'] = self.calculate_quality_scores(input_data)
                 # Add other scores (e.g., ownership)
                 proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
 
                 # Calculate the final score
-                proof_response_object['score'] = self.calculate_score(proof_response_object)
+                proof_response_object['score'] = self.calculate_scores(proof_response_object)
 
                 proof_response_object['attributes'] = {
                     'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
@@ -229,11 +229,11 @@ class Proof:
     # Scoring thresholds
     def get_watch_score(count):
         if count >= 10:
-            return 50
+            return points["NETFLIX_HISTORY"]
         elif 4 <= count <= 9:
-            return 25
+            return points["NETFLIX_HISTORY"] * 0.5
         elif 1 <= count <= 3:
-            return 5
+            return points["NETFLIX_HISTORY"] * 0.1
         else:
             return 0
 
@@ -266,80 +266,66 @@ class Proof:
         interval_scores = [get_watch_score(count) for count in interval_counts]
 
         # Calculate the overall score (average of interval scores)
-        overall_score = sum(interval_scores) / len(interval_scores) if interval_scores else 0
+        overall_score = sum
+        (interval_scores) / len(interval_scores) if interval_scores else 0
 
         return overall_score, interval_scores
 
 
-
-    def get_amazon_order_history_score(orderCount):
+    def get_order_history_score(orderCount, task_subtype):
         # Assuming full score for 10 or more orders
+        max_point = points[task_subtype]
+
         if orderCount >= 10:
-            return 50
+            return max_point
         # Assuming half score for 5-9 orders
         elif 5 <= orderCount <= 9:
-            return 25
+            return max_point * 0.5
         # Assuming 10% score for 1-4 orders
         elif 1 <= orderCount <= 4:
-            return 5
+            return max_point * 0.1
         # Assuming 0 score for 0 orders
         else:
             return 0
-        
-
-    def get_farcaster_userinfo_score(data, points):
-        follower_count = int(data['securedSharedData']['followerCount'])
-        max_followers = 1000  # assuming max followers for full score
-        return min(follower_count / max_followers, 1) * points['FARCASTER_USERINFO']
-
-    def get_twitter_userinfo_score(data, points):
-        follower_count = int(data['securedSharedData']['followers'])
-        max_followers = 1000  # assuming max followers for full score
-        return min(follower_count / max_followers, 1) * points['TWITTER_USERINFO']
-
+    
 
     # Main function to calculate scores
     def calculate_quality_scores(input_data):
-        # Define a dictionary to map task subtypes to their respective score calculation functions
-        scoring_functions = {
-            'AMAZON_ORDER_HISTORY': get_amazon_order_history_score,
-            'FARCASTER_USERINFO': get_farcaster_userinfo_score,
-            'TWITTER_USERINFO': get_twitter_userinfo_score,
-            'NETFLIX_HISTORY': calculate_watch_score,
-        }
         
         # Initialize a dictionary to store the final scores
         final_scores = {}
+        total_secured_score = 0
+        total_max_score = 0
         
         # Loop through each contribution in the input data
         for contribution in input_data['contribution']:
+
             task_subtype = contribution['taskSubType']
             securedSharedData = contribution['securedSharedData']
-
-            if task_subtype === 'NETFLIX_HISTORY':
-                # just provide the required parameters securedSharedData['csv']
+            
+            if task_subtype == 'NETFLIX_HISTORY':
+                # Just provide the required parameters securedSharedData['csv']
                 score, interval_scores = calculate_watch_score(securedSharedData['csv'])
                 final_scores[task_subtype] = score
-            
-            if task_subtype === 'AMAZON_ORDER_HISTORY':
-                # just provide the required parameters securedSharedData['orderCount']
-                if len(securedSharedData['orders'])  == 0:
+
+            elif task_subtype in ['AMAZON_ORDER_HISTORY', 'TRIP_USER_DETAILS']:
+                order_count = len(securedSharedData.get('orders', {}))
+                if order_count == 0:
                     score = 0
                 else:
-                score = get_amazon_order_history_score(securedSharedData['orderCount'])
+                    # Just provide the required parameters order_count, task_subtype
+                    score = get_order_history_score(order_count, task_subtype)
+                final_scores[task_subtype] = score
+
+            elif task_subtype in ['FARCASTER_USERINFO', 'TWITTER_USERINFO', 'LINKEDIN_USER_INFO']:
+                score = points[task_subtype]
                 final_scores[task_subtype] = score
             
-            # Check if the task subtype has a corresponding score function
-            if task_subtype in scoring_functions:
-                score = scoring_functions[task_subtype](contribution, points)
-                final_scores[task_subtype] = score
-            else:
-                # Handle the case where the subtype is not present (e.g., assign score of 0)
-                final_scores[task_subtype] = 0  # Or you can skip this entirely if needed
+            # Update total secured score and total max score
+            total_secured_score += final_scores[task_subtype]
+            total_max_score += points[task_subtype]
         
-        # Optionally, you can check if there are any subtypes not in the input
-        missing_subtypes = set(scoring_functions.keys()) - set(final_scores.keys())
-        for missing in missing_subtypes:
-            final_scores[missing] = 0  # Set to 0 or some other default behavior
+        # Calculate the normalized total score
+        normalized_total_score = total_secured_score / total_max_score if total_max_score > 0 else 0
         
-        return final_scores
+        return normalized_total_score
