@@ -36,44 +36,6 @@ TASK_DATA_TYPE_MAPPING = {
     },
 }
 
-# Contribution subtype weights
-# CONTRIBUTION_SUBTYPE_WEIGHTS = {
-#     # "YOUTUBE_HISTORY": 1.5,
-#     # "YOUTUBE_PLAYLIST": 1.2,
-#     # "YOUTUBE_SUBSCRIBERS": 1.3,
-#     # "NETFLIX_HISTORY": 1.4,
-#     # "NETFLIX_FAVORITE": 1.1,
-#     # "SPOTIFY_PLAYLIST": 1.2,
-#     # "SPOTIFY_HISTORY": 1.3,
-#     # "AMAZON_PRIME_VIDEO": 1.4,
-#     # "AMAZON_ORDER_HISTORY": 1.1,
-#     # "TWITTER_USERINFO": 1.0,
-#     # "FARCASTER_USERINFO": 1.1,
-
-#     YOUTUBE_SUBSCRIBERS,
-#     YOUTUBE_CHANNEL_DATA,
-#     YOUTUBE_CREATOR_PLAYLIST
-#     YOUTUBE_STUDIO
-
-#     AMAZON_PRIME_VIDEO # anticipated
-#     AMAZON_ORDER_HISTORY # have
-
-#     SPOTIFY_PLAYLIST
-#     SPOTIFY_HISTORY
-
-#     NETFLIX_HISTORY      # have
-#     NETFLIX_FAVORITE
-
-#     TWITTER_USERINFO    # have
-
-#     FARCASTER_USERINFO  # have
-
-#     COINMARKETCAP_USER_WATCHLIST # have
-
-#     LINKEDIN_USER_INFO   # have
-#     TRIP_USER_DETAILS    # have
-# }
-
 points = {
     'YOUTUBE_SUBSCRIBERS': 50,
     'YOUTUBE_CHANNEL_DATA': 50,
@@ -144,35 +106,6 @@ class Proof:
         secret_key = self.config.get('jwt_secret_key', 'default_secret')
         expiration_time = self.config.get('jwt_expiration_time', 180)
         return jwt_encode({}, secret_key, algorithm='HS256')
-
-    # def calculate_contribution_score(self, data_list: Dict[str, Any]) -> Dict[str, float]:
-    #     contributions = data_list.get('contribution', [])
-
-    #     total_dynamic_score = 0
-    #     for item in contributions:
-    #         type_ = item.get('type')
-    #         task_subtype = item.get('taskSubType')
-
-    #         if type_ and task_subtype:
-    #             base_score = TASK_DATA_TYPE_MAPPING.get(type_, {}).get(task_subtype, 0)
-    #             weight = CONTRIBUTION_SUBTYPE_WEIGHTS.get(task_subtype, 1)
-    #             total_dynamic_score += base_score * weight
-
-    #     if len(contributions) > CONTRIBUTION_THRESHOLD:
-    #         total_dynamic_score += EXTRA_POINTS
-
-    #     max_possible_score = sum(
-    #         base * CONTRIBUTION_SUBTYPE_WEIGHTS.get(subtype, 1)
-    #         for type_, subtypes in TASK_DATA_TYPE_MAPPING.items()
-    #         for subtype, base in subtypes.items()
-    #     )
-
-    #     normalized_dynamic_score = min(total_dynamic_score / max_possible_score, 1)
-
-    #     return {
-    #         'total_dynamic_score': total_dynamic_score,
-    #         'normalized_dynamic_score': normalized_dynamic_score,
-    #    }
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
@@ -333,4 +266,4 @@ class Proof:
         # Calculate the normalized total score
         normalized_total_score = total_secured_score / total_max_score if total_max_score > 0 else 0
         
-        # return normalized_total_score
+        return normalized_total_score
