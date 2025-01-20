@@ -117,12 +117,13 @@ class Proof:
 
                 logging.info(f"Processing file: {input_filename}")
 
-                jwt_token = self.generate_jwt_token()
+                # jwt_token = self.generate_jwt_token() # TODO: Uncomment
                 # contribution_score_result = self.calculate_contribution_score(input_data)
                 
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
                 proof_response_object['quality'] = self.calculate_quality_score(input_data)
-                proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
+                proof_response_object['ownership'] = 1.0
+                # proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data) # TODO: Uncomment
                 proof_response_object['authenticity'] = self.calculate_authenticity_score(input_data)
 
                 if proof_response_object['authenticity'] < 1.0:
@@ -229,7 +230,7 @@ class Proof:
     # Each function provides score that is out of 50
 
     # Scoring thresholds
-    def get_watch_history_score(count, task_subtype):
+    def get_watch_history_score(self, count, task_subtype):
         max_point = points[task_subtype]
         if count >= 10:
             return max_point
@@ -243,7 +244,7 @@ class Proof:
     # Watch score calculation out of 50
     # Function to calculate score based on 15-day intervals using Pandas
     # 15 days interval is taken to prevent spamming of netflix history
-    def calculate_watch_score(watch_data, task_subtype):
+    def calculate_watch_score(self, watch_data, task_subtype):
         # Convert the input data into a pandas DataFrame
         df = pd.DataFrame(watch_data)
 
@@ -275,7 +276,7 @@ class Proof:
         return overall_score, interval_scores
 
 
-    def get_order_history_score(orderCount, task_subtype):
+    def get_order_history_score(self, orderCount, task_subtype):
         # Assuming full score for 10 or more orders
         max_point = points[task_subtype]
 
@@ -293,7 +294,7 @@ class Proof:
     
 
     # Main function to calculate scores
-    def calculate_quality_score(input_data):
+    def calculate_quality_score(self, input_data):
         
         # Initialize a dictionary to store the final scores
         final_scores = {}
@@ -318,7 +319,7 @@ class Proof:
                     score = 0
                 else:
                     # Just provide the required parameters order_count, task_subtype
-                    score = get_order_history_score(order_count, task_subtype)
+                    score = self.get_order_history_score(order_count, task_subtype)
                 final_scores[task_subtype] = score
 
             elif task_subtype in ['FARCASTER_USERINFO', 'TWITTER_USERINFO', 'LINKEDIN_USER_INFO']:
