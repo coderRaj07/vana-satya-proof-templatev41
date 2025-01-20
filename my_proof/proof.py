@@ -132,10 +132,10 @@ class Proof:
                 # Calculate the final score
                 proof_response_object['score'] = self.calculate_final_score(proof_response_object)
 
-                proof_response_object['attributes'] = {
-                    # 'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
-                    # 'totalContributionScore': contribution_score_result['total_dynamic_score'],
-                }
+                # proof_response_object['attributes'] = {
+                #     # 'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
+                #     # 'totalContributionScore': contribution_score_result['total_dynamic_score'],
+                # }
 
         logging.info(f"Proof response: {proof_response_object}")
         return proof_response_object
@@ -145,34 +145,34 @@ class Proof:
         expiration_time = self.config.get('jwt_expiration_time', 180)
         return jwt_encode({}, secret_key, algorithm='HS256')
 
-    def calculate_contribution_score(self, data_list: Dict[str, Any]) -> Dict[str, float]:
-        contributions = data_list.get('contribution', [])
+    # def calculate_contribution_score(self, data_list: Dict[str, Any]) -> Dict[str, float]:
+    #     contributions = data_list.get('contribution', [])
 
-        total_dynamic_score = 0
-        for item in contributions:
-            type_ = item.get('type')
-            task_subtype = item.get('taskSubType')
+    #     total_dynamic_score = 0
+    #     for item in contributions:
+    #         type_ = item.get('type')
+    #         task_subtype = item.get('taskSubType')
 
-            if type_ and task_subtype:
-                base_score = TASK_DATA_TYPE_MAPPING.get(type_, {}).get(task_subtype, 0)
-                weight = CONTRIBUTION_SUBTYPE_WEIGHTS.get(task_subtype, 1)
-                total_dynamic_score += base_score * weight
+    #         if type_ and task_subtype:
+    #             base_score = TASK_DATA_TYPE_MAPPING.get(type_, {}).get(task_subtype, 0)
+    #             weight = CONTRIBUTION_SUBTYPE_WEIGHTS.get(task_subtype, 1)
+    #             total_dynamic_score += base_score * weight
 
-        if len(contributions) > CONTRIBUTION_THRESHOLD:
-            total_dynamic_score += EXTRA_POINTS
+    #     if len(contributions) > CONTRIBUTION_THRESHOLD:
+    #         total_dynamic_score += EXTRA_POINTS
 
-        max_possible_score = sum(
-            base * CONTRIBUTION_SUBTYPE_WEIGHTS.get(subtype, 1)
-            for type_, subtypes in TASK_DATA_TYPE_MAPPING.items()
-            for subtype, base in subtypes.items()
-        )
+    #     max_possible_score = sum(
+    #         base * CONTRIBUTION_SUBTYPE_WEIGHTS.get(subtype, 1)
+    #         for type_, subtypes in TASK_DATA_TYPE_MAPPING.items()
+    #         for subtype, base in subtypes.items()
+    #     )
 
-        normalized_dynamic_score = min(total_dynamic_score / max_possible_score, 1)
+    #     normalized_dynamic_score = min(total_dynamic_score / max_possible_score, 1)
 
-        return {
-            'total_dynamic_score': total_dynamic_score,
-            'normalized_dynamic_score': normalized_dynamic_score,
-        }
+    #     return {
+    #         'total_dynamic_score': total_dynamic_score,
+    #         'normalized_dynamic_score': normalized_dynamic_score,
+    #    }
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
@@ -333,4 +333,4 @@ class Proof:
         # Calculate the normalized total score
         normalized_total_score = total_secured_score / total_max_score if total_max_score > 0 else 0
         
-        return normalized_total_score
+        # return normalized_total_score
