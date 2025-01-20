@@ -118,20 +118,22 @@ class Proof:
                 logging.info(f"Processing file: {input_filename}")
 
                 jwt_token = self.generate_jwt_token()
-                contribution_score_result = self.calculate_contribution_score(input_data)
-
-                proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
+                # contribution_score_result = self.calculate_contribution_score(input_data)
+                
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
                 proof_response_object['quality'] = self.calculate_quality_scores(input_data)
-                # Add other scores (e.g., ownership)
                 proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
+                proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
+
+                if proof_response_object['authenticity'] < 1.0:
+                    proof_response_object['valid'] = False
 
                 # Calculate the final score
-                proof_response_object['score'] = self.calculate_scores(proof_response_object)
+                proof_response_object['score'] = self.calculate_final_score(proof_response_object)
 
                 proof_response_object['attributes'] = {
-                    'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
-                    'totalContributionScore': contribution_score_result['total_dynamic_score'],
+                    # 'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
+                    # 'totalContributionScore': contribution_score_result['total_dynamic_score'],
                 }
 
         logging.info(f"Proof response: {proof_response_object}")
@@ -210,7 +212,7 @@ class Proof:
 
 
     def calculate_final_score(self, proof_response_object: Dict[str, Any]) -> float:
-        attributes = ['authenticity', 'uniqueness', 'contribution', 'ownership']
+        attributes = ['authenticity', 'uniqueness', 'quality', 'ownership']
 
         valid_attributes = [
             proof_response_object.get(attr, 0) for attr in attributes
@@ -227,20 +229,21 @@ class Proof:
     # Each function provides score that is out of 50
 
     # Scoring thresholds
-    def get_watch_score(count):
+    def get_watch_history_score(count, task_subtype):
+        max_point = points[task_subtype]
         if count >= 10:
-            return points["NETFLIX_HISTORY"]
+            return max_point
         elif 4 <= count <= 9:
-            return points["NETFLIX_HISTORY"] * 0.5
+            return max_point * 0.5
         elif 1 <= count <= 3:
-            return points["NETFLIX_HISTORY"] * 0.1
+            return max_point * 0.1
         else:
             return 0
 
     # Watch score calculation out of 50
     # Function to calculate score based on 15-day intervals using Pandas
     # 15 days interval is taken to prevent spamming of netflix history
-    def calculate_watch_score(watch_data):
+    def calculate_watch_score(watch_data, task_subtype):
         # Convert the input data into a pandas DataFrame
         df = pd.DataFrame(watch_data)
 
@@ -263,7 +266,7 @@ class Proof:
             interval_counts.append(count)
 
         # Calculate the scores for each interval
-        interval_scores = [get_watch_score(count) for count in interval_counts]
+        interval_scores = [get_watch_history_score(count, task_subtype) for count in interval_counts]
 
         # Calculate the overall score (average of interval scores)
         overall_score = sum
@@ -303,9 +306,10 @@ class Proof:
             task_subtype = contribution['taskSubType']
             securedSharedData = contribution['securedSharedData']
             
+            # Can be used for AMAZON_PRIME_VIDEO
             if task_subtype == 'NETFLIX_HISTORY':
                 # Just provide the required parameters securedSharedData['csv']
-                score, interval_scores = calculate_watch_score(securedSharedData['csv'])
+                score, interval_scores = calculate_watch_score(securedSharedData['csv'], task_subtype)
                 final_scores[task_subtype] = score
 
             elif task_subtype in ['AMAZON_ORDER_HISTORY', 'TRIP_USER_DETAILS']:
