@@ -114,7 +114,7 @@ class Proof:
         }
         
         # Encode the JWT
-        token = jwt.encode(payload, secret_key, algorithm='HS256')
+        token = jwt_encode(payload, secret_key, algorithm='HS256')
         return token
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
