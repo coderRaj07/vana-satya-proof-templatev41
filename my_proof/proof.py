@@ -121,9 +121,9 @@ class Proof:
                 # contribution_score_result = self.calculate_contribution_score(input_data)
                 
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
-                proof_response_object['quality'] = self.calculate_quality_scores(input_data)
+                proof_response_object['quality'] = self.calculate_quality_score(input_data)
                 proof_response_object['ownership'] = self.calculate_ownership_score(jwt_token, input_data)
-                proof_response_object['authenticity'] = self.calculate_authenticity(input_data)
+                proof_response_object['authenticity'] = self.calculate_authenticity_score(input_data)
 
                 if proof_response_object['authenticity'] < 1.0:
                     proof_response_object['valid'] = False
@@ -173,7 +173,7 @@ class Proof:
             'normalized_dynamic_score': normalized_dynamic_score,
         }
 
-    def calculate_authenticity(self, data_list: Dict[str, Any]) -> float:
+    def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
         valid_domains = ["wss://witness.reclaimprotocol.org/ws", "reclaimprotocol.org"]
 
@@ -293,7 +293,7 @@ class Proof:
     
 
     # Main function to calculate scores
-    def calculate_quality_scores(input_data):
+    def calculate_quality_score(input_data):
         
         # Initialize a dictionary to store the final scores
         final_scores = {}
