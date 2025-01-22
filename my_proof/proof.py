@@ -2,13 +2,14 @@ import json
 import logging
 import os
 from typing import Dict, Any
-import jwt
-import requests
 from jwt import encode as jwt_encode
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 
 from my_proof.models.proof_response import ProofResponse
+
+# Ensure logging is configured
+logging.basicConfig(level=logging.INFO)
 
 # Task data type mapping with configurable points
 TASK_DATA_TYPE_MAPPING = {
@@ -172,7 +173,7 @@ class Proof:
         if not valid_attributes:
             return 0
 
-        return round(sum(valid_attributes) / len(valid_attributes), 5)
+        return sum(valid_attributes) / len(valid_attributes)
 
 
     # Calculate Quality Scoring Functions
@@ -241,6 +242,18 @@ class Proof:
         else:
             return 0
     
+    def get_coins_pairs_score(self, coins_count, pairs_count, task_subtype):
+        max_point = points[task_subtype]
+        total_count = coins_count + pairs_count
+        
+        if total_count >= 10:
+            return max_point
+        elif 4 <= total_count <= 9:
+            return max_point * 0.5
+        elif 1 <= total_count <= 3:
+            return max_point * 0.1
+        else:
+            return 0
 
     # Main function to calculate scores
     def calculate_quality_score(self, input_data):
@@ -260,6 +273,13 @@ class Proof:
             if task_subtype == 'NETFLIX_HISTORY':
                 # Just provide the required parameters securedSharedData['csv']
                 score, interval_scores = self.calculate_watch_score(securedSharedData['csv'], task_subtype)
+                final_scores[task_subtype] = score
+            
+            elif task_subtype == 'COINMARKETCAP_USER_WATCHLIST':
+                coins_count = len(securedSharedData.get('coins', {}))
+                pairs_count = len(securedSharedData.get('pairs', {}))
+                # Just provide the required parameters coins_count, pairs_count, task_subtype
+                score = self.get_coins_pairs_score(coins_count, pairs_count, task_subtype)
                 final_scores[task_subtype] = score
 
             elif task_subtype in ['AMAZON_ORDER_HISTORY', 'TRIP_USER_DETAILS']:
@@ -281,5 +301,10 @@ class Proof:
         
         # Calculate the normalized total score
         normalized_total_score = total_secured_score / total_max_score if total_max_score > 0 else 0
-        
+
+        # Log the total secured score and total max score
+        logging.info(f"Total Secured Score: {total_secured_score}")
+        logging.info(f"Total Max Score: {total_max_score}")
+        logging.info(f"Normalized Total Score: {normalized_total_score}")
+
         return normalized_total_score
