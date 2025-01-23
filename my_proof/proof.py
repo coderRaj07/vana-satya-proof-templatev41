@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from typing import Dict, Any
+import requests
 from jwt import encode as jwt_encode
 import pandas as pd
 from datetime import datetime, timedelta, timezone
@@ -81,8 +82,8 @@ class Proof:
 
                 logging.info(f"Processing file: {input_filename}")
 
-                # jwt_token = self.generate_jwt_token() # TODO: Uncomment
                 # data = self.extract_wallet_address_and_subtypes(input_data) # TODO: Uncomment
+                # jwt_token = self.generate_jwt_token(data['walletAddress'])# TODO: Uncomment
                 # contribution_score_result = self.calculate_contribution_score(input_data)
                 
                 proof_response_object['uniqueness'] = 1.0  # uniqueness is validated at the time of submission
@@ -105,14 +106,16 @@ class Proof:
         logging.info(f"Proof response: {proof_response_object}")
         return proof_response_object
 
-    def generate_jwt_token(self):
+    def generate_jwt_token(self, wallet_address):
         secret_key = self.config.get('jwt_secret_key', 'default_secret')
-        expiration_time = self.config.get('jwt_expiration_time', 180)
-        # Set the expiration time to 3 minutes from now
+        expiration_time = self.config.get('jwt_expiration_time', 16000)  # Set to 10 minutes (600 seconds)
+        
+        # Set the expiration time to 10 minutes from now
         exp = datetime.now(timezone.utc) + timedelta(seconds=expiration_time)
         
         payload = {
-            'exp': exp
+            'exp': exp,
+            'walletAddress': wallet_address  # Add wallet address to the payload
         }
         
         # Encode the JWT
@@ -122,7 +125,10 @@ class Proof:
     def extract_wallet_address_and_subtypes(self, input_data):
         wallet_address = input_data.get('walletAddress')
         subType = [contribution.get('taskSubType') for contribution in input_data.get('contribution', [])]
-        return {wallet_address, subType}
+        return  {'walletAddress': wallet_address, 'subType': subType}
+    
+    def calculate_max_points(self, points_dict):
+        return sum(points_dict.values())
 
     def calculate_authenticity_score(self, data_list: Dict[str, Any]) -> float:
         contributions = data_list.get('contribution', [])
@@ -136,30 +142,31 @@ class Proof:
         return round(valid_count / len(contributions), 5) if contributions else 0
 
     def calculate_ownership_score(self, jwt_token: str, data: Dict[str, Any]) -> float:
-        # if not jwt_token or not isinstance(jwt_token, str):
-        #     raise ValueError('JWT token is required and must be a string')
-        # if not data or not isinstance(data, dict) or 'walletAddress' not in data or not isinstance(data.get('subType'), list):
-        #     raise ValueError('Invalid data format. Ensure walletAddress is a string and subType is an array.')
 
-        # try:
-        #     headers = {
-        #         'Authorization': f'Bearer {jwt_token}',  # Attach JWT token in the Authorization header
-        #     }
-        #     response = requests.post(self.config.get("validator_base_api_url"), json=data, headers=headers)
+        if not jwt_token or not isinstance(jwt_token, str):
+            raise ValueError('JWT token is required and must be a string')
+        if not data['walletAddress'] or len(data['subType']) == 0:
+            raise ValueError('Invalid data format. Ensure walletAddress is a non-empty string and subType is a non-empty array.')
 
-        #     response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        try:
+            headers = {
+                'Authorization': f'Bearer {jwt_token}',  # Attach JWT token in the Authorization header
+            }
 
-        #     # return response.json().get('success', False) and 1.0 or 0.0
-            return 1.0
-        # except requests.exceptions.RequestException as e:
-        #     logging.error(f"Error during API request: {e}")
-        #     return 0.0
+            response = requests.post(self.config.get('validator_base_api_url'), json=data, headers=headers)
 
-        # except requests.exceptions.HTTPError as error:
-        #     print({'error': error})
-        #     if error.response.status_code == 400:
-        #         return 0.0
-        #     raise ValueError(f'API call failed: {error.response.json().get("error", str(error))}')
+            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+
+            return 1.0 if response.status_code == 200 else 0.0
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error during API request: {e}")
+            return 0.0
+
+        except requests.exceptions.HTTPError as error:
+            print({'error': error})
+            if error.response.status_code == 400:
+                return 0.0
+            raise ValueError(f'API call failed: {error.response.json().get("error", str(error))}')
 
 
     def calculate_final_score(self, proof_response_object: Dict[str, Any]) -> float:
@@ -274,7 +281,7 @@ class Proof:
                 # Just provide the required parameters securedSharedData['csv']
                 score, interval_scores = self.calculate_watch_score(securedSharedData['csv'], task_subtype)
                 final_scores[task_subtype] = score
-            
+
             elif task_subtype == 'COINMARKETCAP_USER_WATCHLIST':
                 coins_count = len(securedSharedData.get('coins', {}))
                 pairs_count = len(securedSharedData.get('pairs', {}))
@@ -297,8 +304,9 @@ class Proof:
             
             # Update total secured score and total max score
             total_secured_score += final_scores[task_subtype]
-            total_max_score += points[task_subtype]
-        
+
+
+        total_max_score = self.calculate_max_points(points)        
         # Calculate the normalized total score
         normalized_total_score = total_secured_score / total_max_score if total_max_score > 0 else 0
 
@@ -306,5 +314,5 @@ class Proof:
         logging.info(f"Total Secured Score: {total_secured_score}")
         logging.info(f"Total Max Score: {total_max_score}")
         logging.info(f"Normalized Total Score: {normalized_total_score}")
-
+        
         return normalized_total_score
