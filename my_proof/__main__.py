@@ -66,11 +66,11 @@ def run() -> None:
 
     if not input_files_exist:
         raise FileNotFoundError(f"No input files found in {INPUT_DIR}")
+    download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
     extract_input()
 
     proof = Proof(config)
     proof_response = proof.generate()
-    download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
     output_path = os.path.join(OUTPUT_DIR, "results.json")
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(proof_response, f, indent=2)
