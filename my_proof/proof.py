@@ -289,38 +289,19 @@ class Proof:
             with open(destination, 'wb') as file:
                 file.write(response.content)
 
-            print(f"File downloaded successfully to {destination}")
+            logging.info(f"File downloaded successfully to {destination}")
+
+            # Read the contents of the file and store in ProofResponse.attributes
+            with open(destination, 'r', encoding='utf-8') as file:
+                try:
+                    file_content = file.read()
+                    self.proof_response.attributes = file_content
+                    logging.info("File contents successfully stored in ProofResponse.attributes")
+                except Exception as e:
+                    logging.error(f"Error reading file contents: {e}")
 
         except requests.exceptions.RequestException as e:
-            print(f"Error downloading the file: {e}")
-        # Get the input directory from the config
-        input_dir = self.config['input_dir']
-
-        # Ensure the directory exists
-        if not os.path.exists(input_dir):
-            os.makedirs(input_dir)
-
-        # Extract the file name from the URL
-        file_name = os.path.basename(url)
-
-        # Create the full path where the file will be saved
-        destination = os.path.join(input_dir, file_name)
-
-        try:
-            # Send GET request to the URL
-            response = requests.get(url)
-            response.raise_for_status()  # Check for any errors during request
-
-            # Write the content to a file
-            with open(destination, 'wb') as file:
-                file.write(response.content)
-
-            ProofResponse.attributes = response.content   
- 
-            print(f"File downloaded successfully to {destination}")
-
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading the file: {e}")
+            logging.error(f"Error downloading the file: {e}")
 
     # Main function to calculate scores
     def calculate_quality_score(self, input_data):
