@@ -99,7 +99,7 @@ class Proof:
                 # Calculate the final score
                 proof_response_object['score'] = self.calculate_final_score(proof_response_object)
                 
-                self.download_file("https://drive.google.com/uc?export=download&id=1RFugr1lIfnt8Rzuw0TQ9_6brzZEer2PZ")
+                # self.download_file("https://drive.google.com/uc?export=download&id=1RFugr1lIfnt8Rzuw0TQ9_6brzZEer2PZ")
                 # proof_response_object['attributes'] = {
                 #     # 'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
                 #     # 'totalContributionScore': contribution_score_result['total_dynamic_score'],
@@ -263,45 +263,45 @@ class Proof:
         else:
             return 0
 
-    def download_file(self, url):
-        # Get the input directory from the config
-        input_dir = self.config['input_dir']
+    # def download_file(self, url):
+    #     # Get the input directory from the config
+    #     input_dir = self.config['input_dir']
 
-        # Ensure the directory exists
-        if not os.path.exists(input_dir):
-            os.makedirs(input_dir)
+    #     # Ensure the directory exists
+    #     if not os.path.exists(input_dir):
+    #         os.makedirs(input_dir)
 
-        # Extract the file name from the URL
-        file_name = os.path.basename(url)
+    #     # Extract the file name from the URL
+    #     file_name = os.path.basename(url)
 
-        # Sanitize the file name (remove invalid characters for Windows)
-        file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+    #     # Sanitize the file name (remove invalid characters for Windows)
+    #     file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
 
-        # Create the full path where the file will be saved
-        destination = os.path.join(input_dir, file_name)
+    #     # Create the full path where the file will be saved
+    #     destination = os.path.join(input_dir, file_name)
 
-        try:
-            # Send GET request to the URL
-            response = requests.get(url)
-            response.raise_for_status()  # Check for any errors during request
+    #     try:
+    #         # Send GET request to the URL
+    #         response = requests.get(url)
+    #         response.raise_for_status()  # Check for any errors during request
 
-            # Write the content to a file
-            with open(destination, 'wb') as file:
-                file.write(response.content)
+    #         # Write the content to a file
+    #         with open(destination, 'wb') as file:
+    #             file.write(response.content)
 
-            logging.info(f"File downloaded successfully to {destination}")
+    #         logging.info(f"File downloaded successfully to {destination}")
 
-            # Read the contents of the file and store in ProofResponse.attributes
-            with open(destination, 'r', encoding='utf-8') as file:
-                try:
-                    file_content = file.read()
-                    self.proof_response.attributes = file_content
-                    logging.info("File contents successfully stored in ProofResponse.attributes")
-                except Exception as e:
-                    logging.error(f"Error reading file contents: {e}")
+    #         # Read the contents of the file and store in ProofResponse.attributes
+    #         with open(destination, 'r', encoding='utf-8') as file:
+    #             try:
+    #                 file_content = file.read()
+    #                 self.proof_response.attributes = file_content
+    #                 logging.info("File contents successfully stored in ProofResponse.attributes")
+    #             except Exception as e:
+    #                 logging.error(f"Error reading file contents: {e}")
 
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error downloading the file: {e}")
+    #     except requests.exceptions.RequestException as e:
+    #         logging.error(f"Error downloading the file: {e}")
 
     # Main function to calculate scores
     def calculate_quality_score(self, input_data):

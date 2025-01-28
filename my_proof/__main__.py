@@ -1,10 +1,13 @@
 import json
 import logging
 import os
+import re
 import sys
 import traceback
 import zipfile
 from typing import Dict, Any
+
+import requests
 from my_proof.proof import Proof
 
 # Default to 'production' if NODE_ENV is not set
@@ -29,6 +32,44 @@ def load_config() -> Dict[str, Any]:
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
 
+def download_file(url):
+        # Get the input directory from the config
+        input_dir = INPUT_DIR
+
+        # Ensure the directory exists
+        if not os.path.exists(input_dir):
+            os.makedirs(input_dir)
+
+        # Extract the file name from the URL
+        file_name = os.path.basename(url)
+
+        # Sanitize the file name (remove invalid characters for Windows)
+        file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+
+        # Create the full path where the file will be saved
+        destination = os.path.join(input_dir, file_name)
+
+        try:
+            # Send GET request to the URL
+            response = requests.get(url)
+            response.raise_for_status()  # Check for any errors during request
+
+            # Write the content to a file
+            with open(destination, 'wb') as file:
+                file.write(response.content)
+
+            logging.info(f"File downloaded successfully to {destination}")
+
+            # Read the contents of the file and store in ProofResponse.attributes
+            with open(destination, 'r', encoding='utf-8') as file:
+                try:
+                    file_content = file.read()
+                    logging.info(f"File contents successfully stored in ProofResponse.attributes, {file_content}")
+                except Exception as e:
+                    logging.error(f"Error reading file contents: {e}")
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error downloading the file: {e}")
 
 def run() -> None:
     """Generate proofs for all input files."""
@@ -41,7 +82,7 @@ def run() -> None:
 
     proof = Proof(config)
     proof_response = proof.generate()
-
+    download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
     output_path = os.path.join(OUTPUT_DIR, "results.json")
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(proof_response, f, indent=2)
