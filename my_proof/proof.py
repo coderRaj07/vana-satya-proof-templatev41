@@ -77,6 +77,8 @@ class Proof:
 
         for input_filename in os.listdir(self.config['input_dir']):
             input_file = os.path.join(self.config['input_dir'], input_filename)
+            # list all files in the input directory
+            logging.info(f"Processing file: {input_filename}")
             if os.path.splitext(input_file)[1].lower() == '.json':
                 with open(input_file, 'r', encoding='utf-8') as f:
                     input_data = json.load(f)

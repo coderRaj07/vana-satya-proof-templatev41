@@ -36,7 +36,6 @@ def load_config() -> Dict[str, Any]:
 def download_file(url):
         # Get the input directory from the config
         input_dir = INPUT_DIR
-        sealed_dir = SEALED_DIR
         # Ensure the directory exists
         if not os.path.exists(input_dir):
             os.makedirs(input_dir)
@@ -55,38 +54,7 @@ def download_file(url):
             response = requests.get(url)
             response.raise_for_status()  # Check for any errors during request
 
-            # Write the content to the input directory
-            with open(input_dir, 'wb') as file:
-                file.write(response.content)
-
             logging.info(f"File downloaded successfully to {input_dir}")
-
-            # Detect encoding and read the file content
-            with open(input_dir, 'rb') as file:
-                raw_data = file.read()
-                detected = chardet.detect(raw_data)
-                encoding = detected.get('encoding', 'utf-8')
-
-                try:
-                    file_content = raw_data.decode(encoding)
-                    logging.info(f"File contents successfully stored in ProofResponse.attributes {file_content}")
-                except Exception as e:
-                    logging.error(f"Error decoding file contents with encoding {encoding}: {e}")
-
-            # Check if the file also exists in the sealed directory
-            if os.path.exists(sealed_dir):
-                logging.info(f"File also exists in sealed folder: {sealed_dir}")
-                with open(sealed_dir, 'rb') as sealed_file:
-                    sealed_raw_data = sealed_file.read()
-                    sealed_detected = chardet.detect(sealed_raw_data)
-                    sealed_encoding = sealed_detected.get('encoding', 'utf-8')
-
-                    try:
-                        sealed_file_content = sealed_raw_data.decode(sealed_encoding)
-                        logging.info("Successfully read file contents from sealed folder")
-                        # Optional: Do something with `sealed_file_content`
-                    except Exception as e:
-                        logging.error(f"Error decoding file contents from sealed folder with encoding {sealed_encoding}: {e}")
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Error downloading the file: {e}")
