@@ -86,7 +86,9 @@ def extract_input() -> None:
         input_file = os.path.join(INPUT_DIR, input_filename)
 
         if zipfile.is_zipfile(input_file):
+            # logging.info(f"Extracting {input_file}")
             with zipfile.ZipFile(input_file, 'r') as zip_ref:
+                logging.info(f"Extracting {input_file} decrypted_file")
                 zip_ref.extractall(INPUT_DIR)
 
 
