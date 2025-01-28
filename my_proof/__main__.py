@@ -47,13 +47,13 @@ def download_file(url):
         file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
 
         # Create the full path where the file will be saved
-        destination = os.path.join(input_dir, file_name)
+        os.path.join(input_dir, file_name)
 
         try:
             # Send GET request to the URL
             response = requests.get(url)
             response.raise_for_status()  # Check for any errors during request
-
+            extract_input()
             logging.info(f"File downloaded successfully to {input_dir}")
 
         except requests.exceptions.RequestException as e:
