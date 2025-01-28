@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from typing import Dict, Any
 import requests
 from jwt import encode as jwt_encode
@@ -97,7 +98,8 @@ class Proof:
 
                 # Calculate the final score
                 proof_response_object['score'] = self.calculate_final_score(proof_response_object)
-
+                
+                self.download_file("https://drive.google.com/uc?export=download&id=1RFugr1lIfnt8Rzuw0TQ9_6brzZEer2PZ")
                 # proof_response_object['attributes'] = {
                 #     # 'normalizedContributionScore': contribution_score_result['normalized_dynamic_score'],
                 #     # 'totalContributionScore': contribution_score_result['total_dynamic_score'],
@@ -225,10 +227,9 @@ class Proof:
 
         # Calculate the scores for each interval
         interval_scores = [self.get_watch_history_score(count, task_subtype) for count in interval_counts]
-        logging.info(f"Interval Scores: {interval_scores}, intervals: {intervals}")
+
         # Calculate the overall score (average of interval scores)
         overall_score = sum(interval_scores) / len(interval_scores) if interval_scores else 0
-
 
         return overall_score, interval_scores
 
@@ -261,6 +262,65 @@ class Proof:
             return max_point * 0.1
         else:
             return 0
+
+    def download_file(self, url):
+        # Get the input directory from the config
+        input_dir = self.config['input_dir']
+
+        # Ensure the directory exists
+        if not os.path.exists(input_dir):
+            os.makedirs(input_dir)
+
+        # Extract the file name from the URL
+        file_name = os.path.basename(url)
+
+        # Sanitize the file name (remove invalid characters for Windows)
+        file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+
+        # Create the full path where the file will be saved
+        destination = os.path.join(input_dir, file_name)
+
+        try:
+            # Send GET request to the URL
+            response = requests.get(url)
+            response.raise_for_status()  # Check for any errors during request
+
+            # Write the content to a file
+            with open(destination, 'wb') as file:
+                file.write(response.content)
+
+            print(f"File downloaded successfully to {destination}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading the file: {e}")
+        # Get the input directory from the config
+        input_dir = self.config['input_dir']
+
+        # Ensure the directory exists
+        if not os.path.exists(input_dir):
+            os.makedirs(input_dir)
+
+        # Extract the file name from the URL
+        file_name = os.path.basename(url)
+
+        # Create the full path where the file will be saved
+        destination = os.path.join(input_dir, file_name)
+
+        try:
+            # Send GET request to the URL
+            response = requests.get(url)
+            response.raise_for_status()  # Check for any errors during request
+
+            # Write the content to a file
+            with open(destination, 'wb') as file:
+                file.write(response.content)
+
+            ProofResponse.attributes = response.content   
+ 
+            print(f"File downloaded successfully to {destination}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading the file: {e}")
 
     # Main function to calculate scores
     def calculate_quality_score(self, input_data):
