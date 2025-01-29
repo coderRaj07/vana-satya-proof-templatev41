@@ -6,6 +6,7 @@ from typing import Dict, Any
 import requests
 from jwt import encode as jwt_encode
 import pandas as pd
+import zipfile
 from datetime import datetime, timedelta, timezone
 
 from my_proof.models.proof_response import ProofResponse
@@ -78,7 +79,29 @@ class Proof:
         for input_filename in os.listdir(self.config['input_dir']):
             input_file = os.path.join(self.config['input_dir'], input_filename)
             # list all files in the input directory
+            # For previous files from fileUrl, we will have to extract them
             logging.info(f"Processing file: {input_filename}")
+            if zipfile.is_zipfile(input_file):
+                with zipfile.ZipFile(input_file, 'r') as zip_ref:
+                    logging.info(f"Extracting {input_file}...")
+                    
+                    for file_name in zip_ref.namelist():
+                        extracted_path = os.path.join(self.config['input_dir'], file_name)
+                        
+                        # Handle duplicate file names by appending a unique number
+                        base_name, ext = os.path.splitext(file_name)
+                        counter = 1
+                        while os.path.exists(extracted_path):
+                            extracted_path = os.path.join(self.config['input_dir'], f"{base_name}_{counter}{ext}")
+                            counter += 1
+                        
+                        # Extract the file to the unique path
+                        with open(extracted_path, 'wb') as output_file:
+                            output_file.write(zip_ref.read(file_name))
+                        
+                        logging.info(f"Extracted {file_name} to {extracted_path}")
+                        
+            # Handle input.json for our multiple provider            
             if os.path.splitext(input_file)[1].lower() == '.json':
                 with open(input_file, 'r', encoding='utf-8') as f:
                     input_data = json.load(f)

@@ -33,28 +33,14 @@ def load_config() -> Dict[str, Any]:
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
 
-def download_file(url):
-        # Get the input directory from the config
-        input_dir = INPUT_DIR
-        # Ensure the directory exists
-        if not os.path.exists(input_dir):
-            os.makedirs(input_dir)
-
-        # # Extract the file name from the URL
-        # file_name = os.path.basename(url)
-
-        # # Sanitize the file name (remove invalid characters for Windows)
-        # file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
-
-        # # Create the full path where the file will be saved
-        # os.path.join(input_dir, file_name)
-
+# The files gets downloaded in decrypted zip format inside input folder
+def download_file(url):      
         try:
             # Send GET request to the URL
             response = requests.get(url)
             response.raise_for_status()  # Check for any errors during request
             extract_input()
-            logging.info(f"File downloaded successfully to {input_dir}")
+            logging.info(f"File downloaded successfully")
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Error downloading the file: {e}")
