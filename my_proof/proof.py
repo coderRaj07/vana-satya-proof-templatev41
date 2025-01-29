@@ -141,7 +141,7 @@ class Proof:
                 logging.info(f"Renamed file to: {json_path}")
 
             # Check file signature
-            with open(zip_path, "rb") as f:
+            with open(json_path, "rb") as f:
                 signature = f.read(4)
             logging.info(f"File signature: {signature}")
             
