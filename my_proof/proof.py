@@ -84,9 +84,24 @@ class Proof:
             logging.info(f"files present in the input directory: {input_filename}")
 
             if input_filename == "decrypted_file.json":
-                with open(input_file, 'r', encoding='utf-8') as f:
-                    input_data = json.load(f)
-                self.proof_response_object.attributes = input_data
+                try:
+                    # Read file as binary to check encoding
+                    with open(input_file, 'rb') as f:
+                        raw_data = f.read()
+                    
+                    # Try decoding as UTF-8
+                    input_data = json.loads(raw_data.decode('utf-8'))
+                    self.proof_response_object.attributes = input_data
+
+                except UnicodeDecodeError:
+                    print(f"ERROR: {input_filename} is not UTF-8 encoded. Trying a different encoding...")
+                    
+                    # Try alternative encoding (e.g., Latin-1)
+                    try:
+                        input_data = json.loads(raw_data.decode('latin-1'))
+                        self.proof_response_object.attributes = input_data
+                    except Exception as e:
+                        print(f"Failed to parse {input_filename}: {e}")
 
             # Handle input.json for our multiple provider   
             # if input_filename == "input.json":         
