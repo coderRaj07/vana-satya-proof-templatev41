@@ -114,51 +114,32 @@ class Proof:
         logging.info(f"Proof response: {proof_response_object}")
         return proof_response_object
     
-    # The files gets downloaded in decrypted zip format inside input folder
     def download_file(self, url):      
         try:
             # Send GET request to the URL
             response = requests.get(url)
-            response.raise_for_status()  # Check for any errors during request
-            logging.info(f"File downloaded successfully")
-            logging.info(f"input dir files: {os.listdir(self.config['input_dir'])}")
-            
-            # Save the downloaded file to input_dir
+            response.raise_for_status()  # Check for errors
+
+            # Save the downloaded file as decrypted_file.zip
             input_dir = self.config['input_dir']
             zip_path = os.path.join(input_dir, "decrypted_file.zip")
-            
+            json_path = os.path.join(input_dir, "decrypted_file.json")
+
             with open(zip_path, "wb") as f:
                 f.write(response.content)
 
             logging.info(f"File downloaded successfully: {zip_path}")
-            logging.info(f"input dir files: {os.listdir(input_dir)}")
 
-            # Check if the file is actually a ZIP
+            # Rename the file to decrypted_file.json
             if os.path.exists(zip_path):
-                with open(zip_path, "rb") as f:
-                    signature = f.read(4)  # Read the first 4 bytes
-                    logging.info(f"File signature: {signature}")
-
-                # ZIP files usually start with PK\x03\x04
-                if signature[:2] != b'PK':
-                    logging.error("Error: File is not a valid ZIP archive")
-                    return
-
-                # Extract if it's a valid ZIP
-                extract_path = os.path.join(input_dir, "decrypted_file")
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_path)
-                logging.info(f"Extracted decrypted_file.zip to {extract_path}")
+                os.rename(zip_path, json_path)
+                logging.info(f"Renamed file to: {json_path}")
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Error downloading the file: {e}")
 
-        except zipfile.BadZipFile:
-            logging.error("Error: decrypted_file.zip is not a valid ZIP file.")
-
         except Exception as e:
             logging.error(f"Unexpected error: {e}")
-
 
     def generate_jwt_token(self, wallet_address):
         secret_key = self.config.get('jwt_secret_key', 'default_secret')
