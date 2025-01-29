@@ -56,11 +56,11 @@ def download_and_extract_file(url):
         # Download the file
         response = requests.get(url, stream=True)
         response.raise_for_status()  # Check for errors
-
-        # Save the file to the download directory
-        with open(file_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        logging.info(f"File Name: {file_name}")
+        # # Save the file to the download directory
+        # with open(file_path, 'wb') as f:
+        #     for chunk in response.iter_content(chunk_size=8192):
+        #         f.write(chunk)
 
         logging.info(f"File downloaded successfully to {file_path}")
 
