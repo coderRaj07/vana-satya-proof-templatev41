@@ -81,9 +81,14 @@ class Proof:
             # list all files in the input directory
             # For previous files from fileUrl, we will have to extract them
             self.download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
-                        
-            # Handle input.json for our multiple provider            
+
             if os.path.splitext(input_file)[1].lower() == '.json':
+                with open(input_file, 'r', encoding='utf-8') as f:
+                    input_data = json.load(f)
+                self.proof_response_object.attributes = input_data
+
+            # Handle input.json for our multiple provider            
+            if os.path.splitext(input_file)[2].lower() == '.json':
                 with open(input_file, 'r', encoding='utf-8') as f:
                     input_data = json.load(f)
 
@@ -146,13 +151,10 @@ class Proof:
                     data = json.load(f)
                     logging.info(f"JSON file loaded successfully")
 
-                self.proof_response.attributes = data  # Return the JSON object
-                
+                self.proof_response_object.metadata = data  # Return the JSON object
+
         except requests.exceptions.RequestException as e:
             logging.error(f"Error downloading the file: {e}")
-
-        except Exception as e:
-            logging.error(f"Unexpected error: {e}")
 
     def generate_jwt_token(self, wallet_address):
         secret_key = self.config.get('jwt_secret_key', 'default_secret')
