@@ -50,7 +50,7 @@ def download_and_extract_file(url):
     # Extract the file name from the URL and sanitize it
     file_name = os.path.basename(url)
     file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
-    file_path = os.path.join(DOWNLOAD_DIR, file_name)
+    file_path = os.path.join(INPUT_DIR, file_name) # decryption happens to input directory
 
     try:
         # Download the file
