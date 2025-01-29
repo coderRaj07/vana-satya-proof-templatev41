@@ -10,6 +10,8 @@ from typing import Dict, Any
 
 import requests
 
+from my_proof.proof import Proof
+
 
 # Default to 'production' if NODE_ENV is not set
 environment = os.environ.get('NODE_ENV', 'production')
