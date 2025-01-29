@@ -80,26 +80,7 @@ class Proof:
             input_file = os.path.join(self.config['input_dir'], input_filename)
             # list all files in the input directory
             # For previous files from fileUrl, we will have to extract them
-            logging.info(f"Processing file: {input_filename}")
-            if zipfile.is_zipfile(input_file):
-                with zipfile.ZipFile(input_file, 'r') as zip_ref:
-                    logging.info(f"Extracting {input_file}...")
-                    
-                    for file_name in zip_ref.namelist():
-                        extracted_path = os.path.join(self.config['input_dir'], file_name)
-                        
-                        # Handle duplicate file names by appending a unique number
-                        base_name, ext = os.path.splitext(file_name)
-                        counter = 1
-                        while os.path.exists(extracted_path):
-                            extracted_path = os.path.join(self.config['input_dir'], f"{base_name}_{counter}{ext}")
-                            counter += 1
-                        
-                        # Extract the file to the unique path
-                        with open(extracted_path, 'wb') as output_file:
-                            output_file.write(zip_ref.read(file_name))
-                        
-                        logging.info(f"Extracted {file_name} to {extracted_path}")
+            self.download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
                         
             # Handle input.json for our multiple provider            
             if os.path.splitext(input_file)[1].lower() == '.json':
@@ -132,6 +113,32 @@ class Proof:
 
         logging.info(f"Proof response: {proof_response_object}")
         return proof_response_object
+    
+    # The files gets downloaded in decrypted zip format inside input folder
+    def download_file(self, url):      
+        try:
+            # Send GET request to the URL
+            response = requests.get(url)
+            response.raise_for_status()  # Check for any errors during request
+            logging.info(f"File downloaded successfully")
+            logging.info(f"input dir files: {os.listdir(self.config['input_dir'])}")
+
+            # Check if decrypted_file.zip is present in input_dir
+            input_dir = self.config['input_dir']
+            zip_path = os.path.join(input_dir, "decrypted_file.zip")
+
+            if os.path.exists(zip_path):
+                extract_path = os.path.join(input_dir, "decrypted_file")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+                logging.info(f"Extracted decrypted_file.zip to {extract_path}")
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error downloading the file: {e}")
+
+        except zipfile.BadZipFile:
+            logging.error(f"Error: decrypted_file.zip is not a valid ZIP file.")
+
 
     def generate_jwt_token(self, wallet_address):
         secret_key = self.config.get('jwt_secret_key', 'default_secret')

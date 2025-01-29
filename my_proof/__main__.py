@@ -9,7 +9,7 @@ import chardet
 from typing import Dict, Any
 
 import requests
-from my_proof.proof import Proof
+
 
 # Default to 'production' if NODE_ENV is not set
 environment = os.environ.get('NODE_ENV', 'production')
@@ -33,18 +33,6 @@ def load_config() -> Dict[str, Any]:
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
 
-# The files gets downloaded in decrypted zip format inside input folder
-def download_file(url):      
-        try:
-            # Send GET request to the URL
-            response = requests.get(url)
-            response.raise_for_status()  # Check for any errors during request
-            extract_input()
-            logging.info(f"File downloaded successfully")
-
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error downloading the file: {e}")
-
 def run() -> None:
     """Generate proofs for all input files."""
     config = load_config()
@@ -53,7 +41,6 @@ def run() -> None:
     if not input_files_exist:
         raise FileNotFoundError(f"No input files found in {INPUT_DIR}")
     
-    download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
     extract_input()
 
     proof = Proof(config)
