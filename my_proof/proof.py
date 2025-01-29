@@ -81,6 +81,7 @@ class Proof:
             # list all files in the input directory
             # For previous files from fileUrl, we will have to extract them
             self.download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
+            logging.info(f"files present in the input directory: {input_filename}")
 
             if input_filename == "decrypted_file.json":
                 with open(input_file, 'r', encoding='utf-8') as f:
@@ -88,8 +89,8 @@ class Proof:
                 self.proof_response_object.attributes = input_data
 
             # Handle input.json for our multiple provider   
-            if input_filename == "input.json":         
-            # if os.path.splitext(input_file)[1].lower() == '.json':
+            # if input_filename == "input.json":         
+            if os.path.splitext(input_file)[1].lower() == '.json':
                 with open(input_file, 'r', encoding='utf-8') as f:
                     input_data = json.load(f)
 
