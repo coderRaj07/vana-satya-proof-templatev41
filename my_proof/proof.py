@@ -135,6 +135,19 @@ class Proof:
                 os.rename(zip_path, json_path)
                 logging.info(f"Renamed file to: {json_path}")
 
+            # Check file signature
+            with open(zip_path, "rb") as f:
+                signature = f.read(4)
+            logging.info(f"File signature: {signature}")
+            
+             # Read JSON file and store it in an object
+            if os.path.exists(json_path):
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    logging.info(f"JSON file loaded successfully")
+
+                self.proof_response.attributes = data  # Return the JSON object
+                
         except requests.exceptions.RequestException as e:
             logging.error(f"Error downloading the file: {e}")
 
