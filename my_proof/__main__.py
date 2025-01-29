@@ -40,14 +40,14 @@ def download_file(url):
         if not os.path.exists(input_dir):
             os.makedirs(input_dir)
 
-        # Extract the file name from the URL
-        file_name = os.path.basename(url)
+        # # Extract the file name from the URL
+        # file_name = os.path.basename(url)
 
-        # Sanitize the file name (remove invalid characters for Windows)
-        file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+        # # Sanitize the file name (remove invalid characters for Windows)
+        # file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
 
-        # Create the full path where the file will be saved
-        os.path.join(input_dir, file_name)
+        # # Create the full path where the file will be saved
+        # os.path.join(input_dir, file_name)
 
         try:
             # Send GET request to the URL
