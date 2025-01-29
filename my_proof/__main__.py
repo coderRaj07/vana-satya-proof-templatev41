@@ -18,6 +18,7 @@ environment = os.environ.get('NODE_ENV', 'production')
 INPUT_DIR = './demo/input' if environment == 'development' else '/input'
 OUTPUT_DIR = './demo/output' if environment == 'development' else '/output'
 SEALED_DIR = './demo/sealed' if environment == 'development' else '/sealed'
+DOWNLOAD_DIR = './demo/download' if environment == 'development' else '/download'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -33,31 +34,62 @@ def load_config() -> Dict[str, Any]:
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
 
-def download_file(url):
-        # Get the input directory from the config
-        input_dir = INPUT_DIR
-        # Ensure the directory exists
-        if not os.path.exists(input_dir):
-            os.makedirs(input_dir)
+def download_and_extract_file(url):
+    """
+    Downloads a file from the provided URL, extracts it if it's a ZIP file, 
+    and saves the contents into the input directory.
+    """
+    # Ensure the download directory exists
+    if not os.path.exists(DOWNLOAD_DIR):
+        os.makedirs(DOWNLOAD_DIR)
 
-        # Extract the file name from the URL
-        file_name = os.path.basename(url)
+    # Ensure the input directory exists
+    if not os.path.exists(INPUT_DIR):
+        os.makedirs(INPUT_DIR)
 
-        # Sanitize the file name (remove invalid characters for Windows)
-        file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+    # Extract the file name from the URL and sanitize it
+    file_name = os.path.basename(url)
+    file_name = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+    file_path = os.path.join(DOWNLOAD_DIR, file_name)
 
-        # Create the full path where the file will be saved
-        os.path.join(input_dir, file_name)
+    try:
+        # Download the file
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Check for errors
 
-        try:
-            # Send GET request to the URL
-            response = requests.get(url)
-            response.raise_for_status()  # Check for any errors during request
-            extract_input()
-            logging.info(f"File downloaded successfully to {input_dir}")
+        # Save the file to the download directory
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
 
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error downloading the file: {e}")
+        logging.info(f"File downloaded successfully to {file_path}")
+
+        # Check if the file is a ZIP file
+        if zipfile.is_zipfile(file_path):
+            logging.info(f"{file_path} is a ZIP file. Extracting contents...")
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                for file_name in zip_ref.namelist():
+                    extracted_path = os.path.join(INPUT_DIR, file_name)
+
+                    # Handle duplicate file names
+                    base_name, ext = os.path.splitext(file_name)
+                    counter = 1
+                    while os.path.exists(extracted_path):
+                        extracted_path = os.path.join(INPUT_DIR, f"{base_name}_{counter}{ext}")
+                        counter += 1
+
+                    # Extract the file
+                    with open(extracted_path, 'wb') as output_file:
+                        output_file.write(zip_ref.read(file_name))
+                    
+                    logging.info(f"Extracted {file_name} to {extracted_path}")
+        else:
+            logging.warning(f"{file_path} is not a ZIP file. No extraction performed.")
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error downloading the file: {e}")
+    except zipfile.BadZipFile as e:
+        logging.error(f"Error extracting the ZIP file: {e}")
 
 def run() -> None:
     """Generate proofs for all input files."""
@@ -66,7 +98,7 @@ def run() -> None:
 
     if not input_files_exist:
         raise FileNotFoundError(f"No input files found in {INPUT_DIR}")
-    download_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
+    download_and_extract_file("https://drive.google.com/uc?export=download&id=1z4lModZU6xQRK8tY2td1ORDk3QK4ksmU")
     extract_input()
 
     proof = Proof(config)
