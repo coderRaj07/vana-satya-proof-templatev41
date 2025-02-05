@@ -1,17 +1,11 @@
 import json
 import logging
 import os
-import re
 import sys
 import traceback
 import zipfile
-import chardet
 from typing import Dict, Any
-
-import requests
-
 from my_proof.proof import Proof
-
 
 # Default to 'production' if NODE_ENV is not set
 environment = os.environ.get('NODE_ENV', 'production')
@@ -28,12 +22,19 @@ def load_config() -> Dict[str, Any]:
     config = {
         'dlp_id': 24,  # DLP ID defaults to 24
         'input_dir': INPUT_DIR,
+        'jwt_expiration_time': os.environ.get('JWT_EXPIRATION_TIME', 600),
         'validator_base_api_url': os.environ.get('VALIDATOR_BASE_API_URL', None),
         'jwt_secret_key': os.environ.get('JWT_SECRET_KEY'),
+        'file_id': os.environ.get('FILE_ID'),
+        'signature': os.environ.get('SIGNATURE'),
+        'redis_port': os.environ.get('REDIS_PORT', None),
+        'redis_host': os.environ.get('REDIS_HOST', None),
+        'redis_pwd': os.environ.get('REDIS_PWD', None),
         'use_sealing': os.path.isdir(SEALED_DIR)
     }
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
+
 
 def run() -> None:
     """Generate proofs for all input files."""
@@ -42,11 +43,11 @@ def run() -> None:
 
     if not input_files_exist:
         raise FileNotFoundError(f"No input files found in {INPUT_DIR}")
-    
     extract_input()
 
     proof = Proof(config)
     proof_response = proof.generate()
+
     output_path = os.path.join(OUTPUT_DIR, "results.json")
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(proof_response, f, indent=2)
@@ -55,32 +56,15 @@ def run() -> None:
 
 def extract_input() -> None:
     """
-    If the input directory contains any zip files, extract them.
-    Renames files with duplicate names by appending a unique number.
+    If the input directory contains any zip files, extract them
+    :return:
     """
     for input_filename in os.listdir(INPUT_DIR):
         input_file = os.path.join(INPUT_DIR, input_filename)
 
         if zipfile.is_zipfile(input_file):
             with zipfile.ZipFile(input_file, 'r') as zip_ref:
-                logging.info(f"Extracting {input_file}...")
-                
-                for file_name in zip_ref.namelist():
-                    extracted_path = os.path.join(INPUT_DIR, file_name)
-                    
-                    # Handle duplicate file names by appending a unique number
-                    base_name, ext = os.path.splitext(file_name)
-                    counter = 1
-                    while os.path.exists(extracted_path):
-                        extracted_path = os.path.join(INPUT_DIR, f"{base_name}_{counter}{ext}")
-                        counter += 1
-                    
-                    # Extract the file to the unique path
-                    with open(extracted_path, 'wb') as output_file:
-                        output_file.write(zip_ref.read(file_name))
-                    
-                    logging.info(f"Extracted {file_name} to {extracted_path}")
-
+                zip_ref.extractall(INPUT_DIR)
 
 
 if __name__ == "__main__":
