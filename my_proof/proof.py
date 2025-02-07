@@ -17,50 +17,6 @@ from my_proof.models.proof_response import ProofResponse
 # Ensure logging is configured
 logging.basicConfig(level=logging.INFO)
 
-# Task data type mapping with configurable points
-TASK_DATA_TYPE_MAPPING = {
-    "NETFLIX": {
-        "NETFLIX_HISTORY": 50,
-        "NETFLIX_FAVORITE": 50,
-    },
-    "SPOTIFY": {
-        "SPOTIFY_PLAYLIST": 50,
-        "SPOTIFY_HISTORY": 50,
-    },
-    "AMAZON": {
-        "AMAZON_PRIME_VIDEO": 50,
-        "AMAZON_ORDER_HISTORY": 50,
-    },
-    "TWITTER": {
-        "TWITTER_USERINFO": 50,
-    },
-    "YOUTUBE": {
-        "YOUTUBE_HISTORY": 50,
-        "YOUTUBE_PLAYLIST": 50,
-        "YOUTUBE_SUBSCRIBERS": 50,
-    },
-    "FARCASTER": {
-        "FARCASTER_USERINFO": 50,
-    },
-}
-
-points = {
-    'YOUTUBE_SUBSCRIBERS': 50,
-    'YOUTUBE_CHANNEL_DATA': 50,
-    'YOUTUBE_CREATOR_PLAYLIST': 50,
-    'YOUTUBE_STUDIO': 50,
-    'AMAZON_PRIME_VIDEO': 50,
-    'AMAZON_ORDER_HISTORY': 50,
-    'SPOTIFY_PLAYLIST': 50,
-    'SPOTIFY_HISTORY': 50,
-    'NETFLIX_HISTORY': 50,
-    'NETFLIX_FAVORITE': 50,
-    'TWITTER_USERINFO': 50,
-    'FARCASTER_USERINFO': 50,
-    'COINMARKETCAP_USER_WATCHLIST': 50,
-    'LINKEDIN_USER_INFO': 50,
-    'TRIP_USER_DETAILS': 50
-}
 
 CONTRIBUTION_THRESHOLD = 4
 EXTRA_POINTS = 5
@@ -86,16 +42,13 @@ class Proof:
                     input_data = json.load(f)
 
                 logging.info(f"Processing file: {input_filename}")
-
-                
-                # jwt_token = generate_jwt_token(data['walletAddress'])# TODO: Remove in future since generated inside calculate_ownership_score
+               
                 # proof_response_object['ownership'] = 1.0
-                wallet_w_subTypes = self.extract_wallet_address_and_subtypes(input_data) # TODO: Uncomment
-                proof_response_object['ownership'] = self.calculate_ownership_score(wallet_w_subTypes) # TODO: Uncomment
+                wallet_w_types = self.extract_wallet_address_and_types(input_data) 
+                proof_response_object['ownership'] = self.calculate_ownership_score(wallet_w_types)
                 input_hash_details = uniqueness_helper(input_data)
                 unique_entry_details = input_hash_details.get("unique_entries")
                 proof_response_object['uniqueness'] = input_hash_details.get("uniqueness_score")
-                
                 proof_response_object['quality'] = self.calculate_quality_score(input_data, unique_entry_details)
                 proof_response_object['authenticity'] = self.calculate_authenticity_score(input_data)
 
@@ -129,13 +82,10 @@ class Proof:
         token = jwt_encode(payload, secret_key, algorithm='HS256')
         return token
 
-    def extract_wallet_address_and_subtypes(self, input_data):
+    def extract_wallet_address_and_types(self, input_data):
         wallet_address = input_data.get('walletAddress')
-        subType = [contribution.get('taskSubType') for contribution in input_data.get('contribution', [])]
-        return  {'walletAddress': wallet_address, 'subType': subType}
-    
-    def calculate_max_points(self, points_dict):
-        return sum(points_dict.values())
+        types = [contribution.get('type') for contribution in input_data.get('contribution', [])]
+        return  {'walletAddress': wallet_address, 'types': types}
 
     def calculate_authenticity_score(self, input_data: Dict[str, Any]) -> float:
         """Calculate authenticity score."""
@@ -146,10 +96,10 @@ class Proof:
     def calculate_ownership_score(self, input_data: Dict[str, Any]) -> float:
         """Calculate ownership score."""
         wallet_address = input_data.get('walletAddress')
-        sub_types = input_data.get('subType', [])
+        types = input_data.get('types', [])
         data = {
             'walletAddress': wallet_address,
-            'subType': sub_types
+            'types': types
         }
         
         jwt_token = generate_jwt_token(wallet_address, self.config.get('jwt_secret_key'), self.config.get('jwt_expiration_time', 16000))
@@ -157,9 +107,6 @@ class Proof:
     
     def calculate_quality_score(self, input_data, unique_entries):
         return calculate_quality_score(input_data, self.config, unique_entries)
-    
-    # def calculate_uniquness_score(self, input_data):
-    #     return calculate_uniquness_score(input_data)
     
     def calculate_final_score(self, proof_response_object: Dict[str, Any]) -> float:
         attributes = ['authenticity', 'uniqueness', 'quality', 'ownership']

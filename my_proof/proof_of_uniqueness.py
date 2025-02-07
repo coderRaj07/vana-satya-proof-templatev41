@@ -22,8 +22,7 @@ def get_redis_client():
             socket_timeout=30,
             retry_on_timeout=True
         )
-        # TODO: For local testing uncomment this
-        # redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True) 
+
         redis_client.ping()
         return redis_client
     except redis.ConnectionError:
@@ -32,12 +31,12 @@ def get_redis_client():
 def hash_value(value):
     return hashlib.sha256(value.encode()).hexdigest() if isinstance(value, str) else hash_value(json.dumps(value))
 
-# To extract taskSubType and securedSharedData from the contribution field of dataset shared
+# To extract type and securedSharedData from the contribution field of dataset shared
 # This data will be used for hashing as well as caching in Redis
 def process_secured_data(contributions):
     processed = []
     for entry in contributions:
-        sub_type = entry.get("taskSubType")
+        type = entry.get("type")
         secured_data = entry.get("securedSharedData")
         
         hashed_data = {
@@ -49,7 +48,7 @@ def process_secured_data(contributions):
             for key, value in secured_data.items()
         }
 
-        processed.append({"subType": sub_type, "securedSharedData": hashed_data})
+        processed.append({"type": type, "securedSharedData": hashed_data})
     return processed
 
 
@@ -58,28 +57,34 @@ def compare_secured_data(processed_curr_data: list, processed_old_data: list):
     total_score = 0  # To calculate total normalized score
 
     # Convert processed_curr_data to a dictionary for easier lookup
-    curr_dict = {item["subType"]: item["securedSharedData"] for item in processed_curr_data}
-    old_dict = {item["subType"]: item["securedSharedData"] for item in processed_old_data}
+    curr_dict = {item["type"]: item["securedSharedData"] for item in processed_curr_data}
+    old_dict = {item["type"]: item["securedSharedData"] for item in processed_old_data}
     logging.info(f"curr_dict {curr_dict}, old_dict {old_dict}")
 
-    # Process all subtypes from curr_dict
-    for sub_type, curr_secured_data in curr_dict.items():
+    # Process all types from curr_dict
+    for type, curr_secured_data in curr_dict.items():
         unique_hashes = set()
         total_hashes = set()
-        old_secured_data = old_dict.get(sub_type, {})  # Get old data if available
+        old_secured_data = old_dict.get(type, {})  # Get old data if available
 
-        logging.info(f"Processing sub_type: {sub_type}, curr_secured_data: {curr_secured_data}")
+        logging.info(f"Processing types: {type}, curr_secured_data: {curr_secured_data}")
 
-        # If subType is not in old_dict, consider all hashes unique
-        if sub_type not in old_dict:
+        # If type is not in old_dict, consider all hashes unique
+        if type not in old_dict:
             for key, value in curr_secured_data.items():
                 if isinstance(value, dict):
                     unique_hashes.update(value.values())
                     total_hashes.update(value.values())
+
                 elif isinstance(value, list):
                     unique_hashes.update(value)
                     total_hashes.update(value)
-            subtype_unique_score = 1.0  # Fully unique
+
+                elif isinstance(value, str):
+                    unique_hashes.add(str(value))
+                    total_hashes.add(str(value))
+
+            type_unique_score = 1.0  # Fully unique
         else:
             # Compare fields inside securedSharedData
             for key, old_value in old_secured_data.items():
@@ -103,17 +108,17 @@ def compare_secured_data(processed_curr_data: list, processed_old_data: list):
                 unique_hashes.update(curr_hashes - old_hashes)
                 total_hashes.update(curr_hashes)
 
-            # Calculate subtype unique score (avoid division by zero)
-            subtype_unique_score = (len(unique_hashes) / len(total_hashes)) if total_hashes else 0
+            # Calculate type unique score (avoid division by zero)
+            type_unique_score = (len(unique_hashes) / len(total_hashes)) if total_hashes else 0
 
-        total_score += subtype_unique_score  # Sum up scores
+        total_score += type_unique_score  # Sum up scores
 
         # Add results
         result.append({
-            "subType": sub_type,
+            "type": type,
             "unique_hashes_in_curr": len(unique_hashes),
             "total_hashes_in_curr": len(total_hashes),
-            "subtype_unique_score": subtype_unique_score
+            "type_unique_score": type_unique_score
         })
 
     # Calculate total normalized score
@@ -127,29 +132,30 @@ def compare_secured_data(processed_curr_data: list, processed_old_data: list):
 
 def get_unique_entries(comparison_results):
     """
-    Extracts subType and unique entry count from comparison results.
+    Extracts type and unique entry count from comparison results.
 
     :param comparison_results: List of dictionaries containing comparison results
-    :return: List of dictionaries with subType and unique entry count
+    :return: List of dictionaries with type and unique entry count
     """
     return [
         {
-            "subType": entry["subType"],
+            "type": entry["type"],
             "unique_entry_count": entry["unique_hashes_in_curr"],
-            "subtype_unique_score": entry["subtype_unique_score"]
+            "type_unique_score": entry["type_unique_score"]
         }
         for entry in comparison_results
     ]
 
 def download_file(file_url, save_path):
     response = requests.get(file_url, stream=True)
-    response.raise_for_status()
     
-    with open(save_path, 'wb') as file:
-        for chunk in response.iter_content(chunk_size=8192):
-            file.write(chunk)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+        return save_path  # File downloaded successfully
     
-    return save_path
+    return None  # Return None if file is not found or any other non-200 response
 
 def download_and_decrypt(file_url, signature):
     try:
@@ -167,7 +173,9 @@ def download_and_decrypt(file_url, signature):
         gpg = gnupg.GPG()
 
         # Download the encrypted file
-        download_file(file_url, encrypted_file_path)
+        result = download_file(file_url, encrypted_file_path)
+        if not result:  # Skip if download failed
+            return None  
 
         # Read encrypted content
         with open(encrypted_file_path, 'rb') as encrypted_file:
@@ -213,70 +221,78 @@ def download_and_decrypt(file_url, signature):
             return decrypted_file_path
 
     except Exception as error:
-        print(f"Error during decryption: {error}")
-        raise
+        logging.warning(f"Error during decryption: {error}")
+        return None
 
 
-# TODO: call api to get {"file_id:"", "file_url":""}[]
 def get_file_details_from_wallet_address(wallet_address):
     validator_base_api_url = os.environ.get('VALIDATOR_BASE_API_URL')
     endpoint = "/api/userinfo"
-    url = f"{validator_base_api_url.rstrip('/')}{endpoint}?walletAddress={wallet_address}"
-    response = requests.get(url)
+    url = f"{validator_base_api_url.rstrip('/')}{endpoint}"
+
+    payload = {"walletAddress": wallet_address}  # Send walletAddress in the body
+    headers = {"Content-Type": "application/json"}  # Set headers for JSON request
+
+    response = requests.post(url, json=payload, headers=headers)  # Make POST request
 
     if response.status_code == 200:
-        return response.json()  # Return JSON
+        return response.json()  # Return JSON response
     else:
-        return []  # Return empty [] in case of an error
+        return []  # Return empty list in case of an error
 
 def main(curr_file_id, curr_input_data, file_list):
     redis_client = get_redis_client()
-    # sign = "0x1195b3bd9821ff98e91a9ea92913cdfc1b2be36a72a8dfb7c220b5bf79e177a87547a3b2340bf1cbb73e48cc7b964be028348b55a0f4cd974eec4d4a5c06d5df1c"
-
     processed_curr_data = process_secured_data(curr_input_data.get("contribution", []))
     processed_old_data = []
-
-    # if redis_client:
-    #     for file in file_list:
-    #         file_id = file.get("fileId")
-    #         stored_data = redis_client.get(file_id)
-    #         if stored_data:
-    #             for entry in json.loads(stored_data):
-    #                 processed_old_data.append(entry)
+    sign = os.environ.get("SIGNATURE")
     if redis_client:
         pipeline = redis_client.pipeline()
         for file in file_list:
             pipeline.get(file.get("fileId"))
         stored_data_list = pipeline.execute()
-        
-        for stored_data in stored_data_list:
+
+        for idx, stored_data in enumerate(stored_data_list):
             if stored_data:
+                # If the data exists in Redis, process it
                 processed_old_data.extend(json.loads(stored_data))
+                
+            else:
+                # If data is not found in Redis, download and process the file
+                file_url = file_list[idx].get("fileUrl")
+                if file_url:
+                    decrypted_data = download_and_decrypt(file_url, sign)
+                    if not decrypted_data:  # Skip if download failed
+                        logging.warning(f"Skipping file {file_url} due to download error.")
+                        continue  # Move to the next file
+                    logging.info(f"Download called for fileId: {file_list[idx].get('fileId')}")
+                    # Load data from the downloaded JSON file
+                    with open(decrypted_data, 'r', encoding="utf-8") as json_file:
+                        downloaded_data = json.load(json_file)
+                    # Process and append the new data
+                    processed_old_data += process_secured_data(downloaded_data.get("contribution"))
 
-        logging.info(f"Redis data {processed_old_data}") 
-            
+        logging.info(f"Processed Redis data: {processed_old_data}")
+
     else:
-        cnt = 0
-        sign = os.environ.get("SIGNATURE")
-
+        # If no Redis client is available, download files from the list
         for file in file_list:
             file_url = file.get("fileUrl")
             if file_url:
                 decrypted_data = download_and_decrypt(file_url, sign)
-                cnt+=1
-                logging.info(f"download called {cnt}")
-                # Load data from the JSON file
-                json_file_path = decrypted_data
-                with open(json_file_path, 'r', encoding="utf-8") as json_file:
+                if not decrypted_data:  # Skip if download failed
+                        logging.warning(f"Skipping file {file_url} due to download error.")
+                        continue  # Move to the next file
+                logging.info(f"Download called for file: {file_url}")
+                # Load data from the decrypted JSON file
+                with open(decrypted_data, 'r', encoding="utf-8") as json_file:
                     downloaded_data = json.load(json_file)
-                # process and generate key values with respective hash values
-                logging.info(f"downloaded_data is {downloaded_data.get("contribution")}")
                 processed_old_data += process_secured_data(downloaded_data.get("contribution"))
-    
+
+    # Store current data in Redis if available
     if redis_client:
         redis_client.set(curr_file_id, json.dumps(processed_curr_data))
-    
-     
+
+    # Compare current and old data
     response = compare_secured_data(processed_curr_data, processed_old_data)
 
     # Return the processed data
@@ -289,6 +305,7 @@ def main(curr_file_id, curr_input_data, file_list):
 def uniqueness_helper(curr_input_data):
     wallet_address = curr_input_data.get('walletAddress')
     file_list = get_file_details_from_wallet_address(wallet_address) #TODO: add this later on
+    logging.info(f"File list: {file_list}")
     # file_list = [
     #     {"fileId": 4, "fileUrl":"https://drive.google.com/uc?export=download&id=1unoDd1-DM6vwtdEpAdeUaVctossu_DhA"}, 
     #     # {"fileId": 4, "fileUrl":"https://drive.usercontent.google.com/download?id=1RFugr1lIfnt8Rzuw0TQ9_6brzZEer2PZ&export=download&authuser=0"}, 
@@ -296,6 +313,7 @@ def uniqueness_helper(curr_input_data):
     #     # {"fileId": 11, "fileUrl":"https://drive.usercontent.google.com/download?id=1RFugr1lIfnt8Rzuw0TQ9_6brzZEer2PZ&export=download&authuser=0"}, 
     # ]
     curr_file_id = os.environ.get('FILE_ID') 
+    logging.info(f"Current file id: {curr_file_id}")
     response = main(curr_file_id, curr_input_data, file_list)
     res = {
         "unique_entries": get_unique_entries(response.get("result")),
